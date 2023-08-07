@@ -1,20 +1,33 @@
-import { MikroORM, RequiredEntityData} from "@mikro-orm/core";
+import { MikroORM } from "@mikro-orm/core";
 import { __prod__ } from "./constant";
-import { Post } from "./entities/Post";
+// import { Post } from "./entities/Post";
 import microConfig from "./mikro-orm.config";
+import express from "express";
+import {ApolloServer} from "apollo-server-express";
+import { buildSchema } from "type-graphql";
+import { HelloResolver } from "./resolvers/hello";
 
 const main = async() => {
     const orm = await MikroORM.init(microConfig);
-    orm.getMigrator().up();
+    await orm.getMigrator().up();
 
-    const emFork = orm.em.fork();
-    const post = emFork.create(Post, {
-        title: "my first post",
-    }) as RequiredEntityData<Post>;
-    await emFork.persistAndFlush(post);
-    const posts = await emFork.find(Post, {});
-    console.log(posts);
+    const app = express();
 
+    const apolloServer = new ApolloServer({
+        schema: await buildSchema({
+            resolvers: [HelloResolver],
+            validate: false
+        })
+    });
+    await apolloServer.start();
+    apolloServer.applyMiddleware({ app });
+
+    app.get('/',(_, res) =>{
+        res.send({message : "Hello Testing Server Route"});
+    })
+    app.listen(3000, () =>{
+        console.log("App is listening on port : 3000");
+    })
 };
 
 
